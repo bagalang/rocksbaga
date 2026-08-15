@@ -152,3 +152,7 @@ TTL is lazy on the library path (expiry on read/flush/compact); MT serve
 also runs an active expire sweeper (R57).
 SCAN (R63) reuses a per-epoch key snapshot across cursor pages.
 Details: [docs/gaps.md](docs/gaps.md), [docs/PLAN.md](docs/PLAN.md).
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Dim Gigov.
