@@ -6,6 +6,25 @@ path. Layered package (not a single flat folder).
 Formerly **`lsmbaga`** (R0–R9). Symbols stay `lsm_*`. **Not** RocksDB
 feature parity — see [docs/gaps.md](docs/gaps.md).
 
+This repository is the engine. The compiler, `std`, and `kvbaga` stay in
+the baga language monorepo. Check this tree out as `app-product/rocksbaga`
+there (git submodule) so path deps and `-I app-product` keep working.
+
+## Checkout
+
+Inside a baga language clone:
+
+```bash
+git submodule update --init app-product/rocksbaga
+# or, first time from a fresh baga tree without the submodule recorded:
+git clone git@github.com:bagalang/rocksbaga.git app-product/rocksbaga
+```
+
+`sandak.toml` keeps path deps (`../../std`, `../kvbaga`) so the shared
+packages stay in baga. Tests (`tests/lsm_*`, `tests/page_cache_test`,
+`tests/sst_scan_test`, `tests/shard_test`) and benches (`bench/rocks/`)
+also stay in baga.
+
 **Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## Layout
