@@ -208,4 +208,8 @@ Goal: Track S flagship — durable KV on RESP.
   throughout (NUL keys round-trip in INCRBY/SETNX/UNLINK wire tests);
   tests `r69_*` (poll wire), `r69c_*` (sharded exec), `r69mt_*` (MT) —
   **done**
-- (next) — nothing queued; P0–P2 + R1–R69 done
+- **R70 per-CF compaction filter** — `filter_kind/cutoff/cf` on
+  `LsmDB`; kind=1 groups `~lsn` suffix keys and keeps newest +
+  newest≤cutoff. `lsm_compact_full` + `lsm_cluster_apply_filter`.
+  Merge invalidates SCAN epoch. tests `lsm_filter_test` — **done**
+- (next) — nothing queued; P0–P2 + R1–R70 done

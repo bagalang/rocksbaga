@@ -2,6 +2,7 @@
 
 import "types.baga"
 import "manifest.baga"
+import "compact_filter.baga"
 import "../util/codec.baga"
 import "../util/ttl.baga"
 import "../cache/page.baga"
@@ -232,7 +233,7 @@ fn lsm_merge_indices(db: LsmDB, idxs: Vec<i64>, out_level: i64) -> LsmDB !IO !Ti
     let now = time_now_ms()?
     let keep_tombs = vec_len(idxs) < vec_len(db.gens)
     // R67: merge accumulators keyed by raw bytes (NUL-safe).
-    let acc: Map<bytes, bytes> = map_new()
+    let mut acc: Map<bytes, bytes> = map_new()
     let tomb: Map<bytes, i64> = map_new()
     // R20: stream each SST by restart blocks (page cache) — no full-file copy.
     let mut cur = db.cache
@@ -241,6 +242,9 @@ fn lsm_merge_indices(db: LsmDB, idxs: Vec<i64>, out_level: i64) -> LsmDB !IO !Ti
         cur = sst_fold_into(cur, db.dir, gen, db.sst_fds, db.sst_sizes, acc, tomb)?
     }
     db.cache = cur
+    if db.filter_kind == 1 {
+        acc = lsm_apply_mvcc_filter(acc, db.filter_cutoff, db.filter_cf)
+    }
     // R21: sort map_keys(acc) in place; append pure tombs when keep_tombs.
     let all = map_keys(acc)
     if keep_tombs == 1 {
@@ -357,6 +361,10 @@ fn lsm_merge_indices(db: LsmDB, idxs: Vec<i64>, out_level: i64) -> LsmDB !IO !Ti
         return db
     }
     db.manifest_edits = ec
+    // Filter/tomb drop changes the live key set — invalidate SCAN cache
+    // (engine.lsm_scan_touch would cycle-import this file).
+    db.write_epoch = db.write_epoch + 1
+    db.scan_epoch = 0 - 1
     return db
 }
 

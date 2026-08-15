@@ -38,6 +38,7 @@ fn lsm_empty_db(dir: str) -> LsmDB {
         hot_gen: 0 - 1, hot_off: 0 - 1, hot_n: 0, hot_data: bytes_new(0),
         sync_every: 1, since_sync: 0, manifest_edits: 0,
         write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk,
+        filter_kind: 0, filter_cutoff: 0, filter_cf: 0,
         ok: 1
     }
 }
@@ -70,6 +71,7 @@ fn lsm_read_manifest(dir: str) -> LsmDB !IO {
         hot_gen: 0 - 1, hot_off: 0 - 1, hot_n: 0, hot_data: bytes_new(0),
         sync_every: 1, since_sync: 0, manifest_edits: edits,
         write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk,
+        filter_kind: 0, filter_cutoff: 0, filter_cf: 0,
         ok: 1
     }
 }
@@ -159,6 +161,9 @@ fn lsm_flushdb(db: LsmDB) -> LsmDB !IO {
     let sync_every = db.sync_every
     let target_bytes = db.target_bytes
     let merge_pick = db.merge_pick
+    let filter_kind = db.filter_kind
+    let filter_cutoff = db.filter_cutoff
+    let filter_cf = db.filter_cf
     lsm_close(db)?
     lsm_path_wipe(path)?
     let mut ndb = lsm_open(path, flush_at, compact_at)?
@@ -167,6 +172,9 @@ fn lsm_flushdb(db: LsmDB) -> LsmDB !IO {
     }
     ndb.target_bytes = target_bytes
     ndb.merge_pick = merge_pick
+    ndb.filter_kind = filter_kind
+    ndb.filter_cutoff = filter_cutoff
+    ndb.filter_cf = filter_cf
     return ndb
 }
 
@@ -554,5 +562,24 @@ fn lsm_flush_force(db: LsmDB) -> LsmDB !IO !Time {
         return db
     }
     return lsm_flush(db)?
+}
+
+// Merge every live SST into one L3 file so a compaction filter sees
+// the full version set for each user key (boilaDB VACUUM / P16 gate).
+fn lsm_compact_full(db: LsmDB) -> LsmDB !IO !Time {
+    db = lsm_flush_force(db)?
+    if db.ok == 0 {
+        return db
+    }
+    if vec_len(db.gens) < 1 {
+        return db
+    }
+    let idxs: Vec<i64> = vec_new()
+    let mut i: i64 = 0
+    while i < vec_len(db.gens) {
+        vec_push(idxs, i)
+        i = i + 1
+    }
+    return lsm_merge_indices(db, idxs, 3)?
 }
 

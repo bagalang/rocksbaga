@@ -1,0 +1,135 @@
+// compact_filter.baga — per-CF compaction filter (boilaDB P16).
+//
+// kind 0: no-op (merge stays last-write-wins per exact key).
+// kind 1: keys whose last 8 bytes are ~lsn matching the value's 8-byte
+// LSN header (after TTL unpack). Group by user key (prefix without the
+// suffix). Keep the newest version; if cutoff > 0 also keep the newest
+// version with lsn <= cutoff. A superseded unversioned (legacy) key for
+// the same user is dropped. filter_cf 0 = all CFs; else first key byte.
+
+import "types.baga"
+import "../util/codec.baga"
+import "../util/ttl.baga"
+import "std/bytes/bytes.baga"
+
+fn lsm_set_filter(db: LsmDB, kind: i64, cutoff: i64, cf: i64) -> LsmDB {
+    db.filter_kind = kind
+    db.filter_cutoff = cutoff
+    db.filter_cf = cf
+    return db
+}
+
+fn lsm_inner_val(raw: bytes) -> bytes {
+    let u = ttl_unpack(raw)
+    return u.val
+}
+
+fn lsm_val_lsn(val: bytes) -> i64 {
+    if bytes_len(val) < 8 {
+        return 0 - 1
+    }
+    let mut x: i64 = 0
+    let mut i: i64 = 0
+    while i < 8 {
+        x = (x << 8) | (bytes_at(val, i) & 255)
+        i = i + 1
+    }
+    return x
+}
+
+fn lsm_key_inv_lsn(key: bytes) -> i64 {
+    let n = bytes_len(key)
+    if n < 8 {
+        return 0 - 1
+    }
+    let mut x: i64 = 0
+    let mut i: i64 = 0
+    while i < 8 {
+        x = (x << 8) | ((bytes_at(key, n - 8 + i) ^ 255) & 255)
+        i = i + 1
+    }
+    return x
+}
+
+fn lsm_key_is_ver(key: bytes, val: bytes, cf: i64) -> i64 {
+    let n = bytes_len(key)
+    if n < 13 {
+        return 0
+    }
+    if cf > 0 {
+        if (bytes_at(key, 0) & 255) != (cf & 255) {
+            return 0
+        }
+    }
+    let inner = lsm_inner_val(val)
+    let lv = lsm_val_lsn(inner)
+    if lv < 0 {
+        return 0
+    }
+    if lsm_key_inv_lsn(key) != lv {
+        return 0
+    }
+    return 1
+}
+
+fn lsm_key_user(key: bytes) -> bytes {
+    let n = bytes_len(key)
+    if n < 8 {
+        return key
+    }
+    return bytes_slice(key, 0, n - 8)
+}
+
+fn lsm_apply_mvcc_filter(acc: Map<bytes, bytes>, cutoff: i64, cf: i64) -> Map<bytes, bytes> {
+    let all = map_keys(acc)
+    let vers: Vec<bytes> = vec_new()
+    let mut i: i64 = 0
+    while i < vec_len(all) {
+        let k = vec_get(all, i)
+        if map_has(acc, k) == 1 {
+            if lsm_key_is_ver(k, map_get(acc, k), cf) == 1 {
+                vec_push(vers, k)
+            }
+        }
+        i = i + 1
+    }
+    sort_bytes(vers)
+    let dropm: Map<bytes, i64> = map_new()
+    i = 0
+    let n = vec_len(vers)
+    while i < n {
+        let k0 = vec_get(vers, i)
+        let user = lsm_key_user(k0)
+        if map_has(acc, user) == 1 {
+            map_set(dropm, user, 1)
+        }
+        let mut need_snap: i64 = 0
+        if cutoff > 0 && lsm_key_inv_lsn(k0) > cutoff {
+            need_snap = 1
+        }
+        let mut j = i + 1
+        let mut walking: i64 = 1
+        while walking == 1 && j < n {
+            let kj = vec_get(vers, j)
+            if bytes_cmp(lsm_key_user(kj), user) != 0 {
+                walking = 0
+            } else {
+                let lj = lsm_key_inv_lsn(kj)
+                if need_snap == 1 && lj <= cutoff {
+                    need_snap = 0
+                } else {
+                    map_set(dropm, kj, 1)
+                }
+                j = j + 1
+            }
+        }
+        i = j
+    }
+    let dk = map_keys(dropm)
+    let mut di: i64 = 0
+    while di < vec_len(dk) {
+        map_del(acc, vec_get(dk, di))
+        di = di + 1
+    }
+    return acc
+}

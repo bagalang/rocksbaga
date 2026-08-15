@@ -126,6 +126,8 @@ import "rocksbaga/server.baga"
 
 fn lsm_open(dir, flush_at, compact_at) -> LsmDB !IO
 fn lsm_put / lsm_put_b / lsm_del / lsm_get / lsm_flush_force / lsm_close
+fn lsm_set_filter(db, kind, cutoff, cf)   // 1 = mvcc_gc per-CF
+fn lsm_compact_full(db)                   // merge all SSTs (VACUUM)
 fn lsm_checkpoint(db, dest) -> LsmDB !IO !Time   // R58: point-in-time copy
 fn lsm_backup_create(db, dest)                   // R62: checkpoint + meta
 fn lsm_backup_verify / lsm_backup_ship / lsm_backup_restore

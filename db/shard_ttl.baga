@@ -97,6 +97,42 @@ fn lsm_cluster_apply_target_bytes(c: LsmCluster, tb: i64) -> LsmCluster {
     return c
 }
 
+fn lsm_cluster_apply_filter(c: LsmCluster, kind: i64, cutoff: i64, cf: i64) -> LsmCluster {
+    let mut i: i64 = 0
+    while i < c.n {
+        let mut db = vec_get(c.shards, i)
+        db.filter_kind = kind
+        db.filter_cutoff = cutoff
+        db.filter_cf = cf
+        vec_set(c.shards, i, db)
+        i = i + 1
+    }
+    return c
+}
+
+fn lsm_cluster_set_cutoff(c: LsmCluster, cutoff: i64) -> LsmCluster {
+    let mut i: i64 = 0
+    while i < c.n {
+        let mut db = vec_get(c.shards, i)
+        db.filter_cutoff = cutoff
+        vec_set(c.shards, i, db)
+        i = i + 1
+    }
+    return c
+}
+
+fn lsm_cluster_compact_full(c: LsmCluster) -> LsmCluster !IO !Time {
+    let mut i: i64 = 0
+    while i < c.n {
+        let mut db = vec_get(c.shards, i)
+        db = lsm_compact_full(db)?
+        vec_set(c.shards, i, db)
+        c.ok = db.ok
+        i = i + 1
+    }
+    return c
+}
+
 fn lsm_cluster_apply_cache(c: LsmCluster, pages: i64) -> LsmCluster {
     if pages < 16 {
         return c
