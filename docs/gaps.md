@@ -2,6 +2,11 @@
 
 Probe log from building the Track S flagship on S2–S4 + MEM-1/2.
 
+## L0 — PORT clamp / empty dir — **closed 2026-08-24**
+
+`lsm_port_parse` for `LSMPORT` (1..65535). `lsm_serve_to` refuses out-of-range
+ports. `lsm_open("")` is `ok=0`.
+
 ## L1 — struct scalar fields do not mutate through by-value params
 
 **Symptom.** `fn f(pc: PageCache) { pc.hand = 1 }` does not update the

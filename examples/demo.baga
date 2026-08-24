@@ -22,20 +22,20 @@ fn cfg(name: str, def: str) -> str !IO {
 }
 
 fn args1(a: str) -> Vec<str> {
-    let v = vec_new()
+    let v: Vec<str> = vec_new()
     vec_push(v, a)
     return v
 }
 
 fn args2(a: str, b: str) -> Vec<str> {
-    let v = vec_new()
+    let v: Vec<str> = vec_new()
     vec_push(v, a)
     vec_push(v, b)
     return v
 }
 
 fn args3(a: str, b: str, c: str) -> Vec<str> {
-    let v = vec_new()
+    let v: Vec<str> = vec_new()
     vec_push(v, a)
     vec_push(v, b)
     vec_push(v, c)
@@ -71,7 +71,7 @@ fn run(fd: i64, label: str, a: Vec<str>) -> i64 !Net !IO {
 }
 
 fn main() -> i64 !Net !IO !Par !Time {
-    let port = parse_int(cfg("LSMPORT", "16579")?)
+    let port = lsm_port_parse(cfg("LSMPORT", "16579")?, 16579)
     // fresh data dir for the demo
     let dir = cfg("LSMPATH", "/tmp/baga_lsm_demo")?
     // best-effort wipe of prefix files is left to the operator; demo reuses path

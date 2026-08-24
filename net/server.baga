@@ -28,6 +28,18 @@ import "std/str/str.baga"
 import "std/time/time.baga"
 import "std/bytes/bytes.baga"
 
+// LSMPORT from env: 1..65535 else default. parse_int("abc") is 0.
+fn lsm_port_parse(raw: str, def: i64) -> i64 {
+    if raw == "" {
+        return def
+    }
+    let p = parse_int(raw)
+    if p < 1 || p > 65535 {
+        return def
+    }
+    return p
+}
+
 fn lsm_upper(s: str) -> str {
     let n = len(s)
     if n <= 0 {

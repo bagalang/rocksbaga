@@ -23,6 +23,9 @@ import "std/time/time.baga"
 import "std/bytes/bytes.baga"
 
 fn lsm_serve_to(port: i64, timeout_s: i64) -> i64 !Net !IO !Time !Par {
+    if port < 1 || port > 65535 {
+        return -1
+    }
     let cfm = env("LSM_CF")?
     if cfm == "1" {
         return lsm_serve_cf_to(port, timeout_s)?

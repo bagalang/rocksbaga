@@ -78,6 +78,11 @@ fn lsm_read_manifest(dir: str) -> LsmDB !IO {
 
 
 fn lsm_open(dir: str, flush_at: i64, compact_at: i64) -> LsmDB !IO {
+    if dir == "" {
+        let mut bad = lsm_empty_db("")
+        bad.ok = 0
+        return bad
+    }
     let mut db = lsm_read_manifest(dir)?
     db.dir = dir
     if flush_at > 0 {
