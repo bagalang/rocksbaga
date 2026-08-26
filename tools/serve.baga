@@ -2,6 +2,7 @@
 // Env: LSMPORT (16579), LSMPATH, LSM_FLUSH_AT, LSM_CACHE_PAGES, …
 
 import "../net/server.baga"
+import "../net/server_entry.baga"
 import "std/os/os.baga"
 import "std/str/str.baga"
 

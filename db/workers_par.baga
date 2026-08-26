@@ -406,3 +406,5 @@ fn lsm_parallel_wait_b(p: LsmParallel, id: i64) -> bytes !Par {
 }
 
 fn lsm_parallel_wait(p: LsmParallel, id: i64) -> str !Par {
+    return str_of_bytes(lsm_parallel_wait_b(p, id)?)
+}

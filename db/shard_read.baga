@@ -4,6 +4,7 @@
 
 import "shard.baga"
 import "engine.baga"
+import "engine_keys.baga"
 import "../cache/page.baga"
 import "../util/codec.baga"
 import "std/str/str.baga"

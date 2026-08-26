@@ -5,6 +5,7 @@
 import "../util/codec.baga"
 import "../cache/page.baga"
 import "sstable.baga"
+import "sstable_parse.baga"
 import "block.baga"
 import "bloom.baga"
 import "std/os/os.baga"

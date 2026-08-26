@@ -8,9 +8,6 @@ import "engine.baga"
 import "std/str/str.baga"
 import "std/bytes/bytes.baga"
 
-    return str_of_bytes(lsm_parallel_wait_b(p, id)?)
-}
-
 // Sync helper: submit + wait (tests / simple clients).
 fn lsm_parallel_set(p: LsmParallel, key: str, val: str) -> str !Par {
     let id = lsm_parallel_submit(p, LSM_OP_SET(), key, val, "")?

@@ -2,6 +2,7 @@
 // LsmSrv FD сет, on_readable, lsm_serve_conn(_multi), serve_serial_to.
 
 import "server.baga"
+import "server_cluster.baga"
 import "../db/shard.baga"
 import "../db/shard_read.baga"
 import "../db/multidb.baga"
