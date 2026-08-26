@@ -101,7 +101,12 @@ fn lsm_apply_mvcc_filter(acc: Map<bytes, bytes>, cutoff: i64, cf: i64) -> Map<by
         let k0 = vec_get(vers, i)
         let user = lsm_key_user(k0)
         if map_has(acc, user) == 1 {
-            map_set(dropm, user, 1)
+            // P43: base със СЪЩАТА стойност като най-новата версия е
+            // materialized newest pointer (O(1) point get) — пази се.
+            // Различна стойност → legacy ред отпреди версиите → drop.
+            if bytes_cmp(map_get(acc, user), map_get(acc, k0)) != 0 {
+                map_set(dropm, user, 1)
+            }
         }
         let mut need_snap: i64 = 0
         if cutoff > 0 && lsm_key_inv_lsn(k0) > cutoff {
