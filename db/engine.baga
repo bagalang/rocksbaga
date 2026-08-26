@@ -37,7 +37,7 @@ fn lsm_empty_db(dir: str) -> LsmDB {
         sst_fds: map_new(), sst_sizes: map_new(), sst_meta: map_new(),
         hot_gen: 0 - 1, hot_off: 0 - 1, hot_n: 0, hot_data: bytes_new(0),
         sync_every: 1, since_sync: 0, manifest_edits: 0,
-        write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk,
+        write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk, scan_cache_off: 0,
         filter_kind: 0, filter_cutoff: 0, filter_cf: 0,
         ok: 1
     }
@@ -70,7 +70,7 @@ fn lsm_read_manifest(dir: str) -> LsmDB !IO {
         sst_fds: map_new(), sst_sizes: map_new(), sst_meta: map_new(),
         hot_gen: 0 - 1, hot_off: 0 - 1, hot_n: 0, hot_data: bytes_new(0),
         sync_every: 1, since_sync: 0, manifest_edits: edits,
-        write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk,
+        write_epoch: 0, scan_epoch: 0 - 1, scan_pat: bytes_new(0), scan_keys: sk, scan_cache_off: 0,
         filter_kind: 0, filter_cutoff: 0, filter_cf: 0,
         ok: 1
     }

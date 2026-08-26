@@ -48,6 +48,11 @@ struct LsmDB {
     scan_epoch: i64,       // equals write_epoch when scan_keys is valid
     scan_pat: bytes,       // R68: MATCH pattern (raw bytes) used to build scan_keys
     scan_keys: Vec<bytes>, // R67: filtered live keys as raw bytes (unordered — Redis SCAN style)
+    // serve/MT: 1 → без cross-request scan snapshot (scan fn-ите събират
+    // fresh всеки път). Кешът е shared LsmDB state с arena lifetime —
+    // при pool + per-statement rewind води до use-after-free (segfault
+    // при c=32 в lsm_scan_keys_free_data). Single-thread пътят пази кеша.
+    scan_cache_off: i64,
     // P16 / boilaDB: per-CF compaction filter. kind 0 = none (exact-key
     // last-write-wins); 1 = mvcc_gc (group by user key, keep newest +
     // newest with lsn <= cutoff). cf 0 = all CFs; else first key byte.

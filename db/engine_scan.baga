@@ -112,6 +112,34 @@ fn lsm_scan_rebuild_prefix_b(db: LsmDB, prefix: bytes) -> LsmDB !IO !Time {
 
 
 fn lsm_scan_prefix_kb(db: LsmDB, cursor: i64, count: i64, prefix: bytes) -> LsmScanB !IO !Time {
+    if db.scan_cache_off == 1 {
+        // MT/serve: fresh snapshot в local (нищо не се пише в db — няма
+        // shared lifetime, няма aliasing със следващи заявки).
+        let fr = lsm_live_map_prefix_kb(db, prefix)?
+        let mut db2 = fr.db
+        let all = fr.keys
+        sort_bytes(all)
+        let n2 = vec_len(all)
+        let mut cur2 = cursor
+        if cur2 < 0 { cur2 = 0 }
+        if cur2 > n2 { cur2 = n2 }
+        let mut cnt2 = count
+        if cnt2 < 1 { cnt2 = 10 }
+        if cnt2 > 1000 { cnt2 = 1000 }
+        let out2: Vec<bytes> = vec_new()
+        let mut j2 = cur2
+        let mut taken2: i64 = 0
+        while j2 < n2 && taken2 < cnt2 {
+            vec_push(out2, vec_get(all, j2))
+            j2 = j2 + 1
+            taken2 = taken2 + 1
+        }
+        let mut next2: i64 = j2
+        if next2 >= n2 {
+            next2 = 0
+        }
+        return LsmScanB { db: db2, next: next2, keys: out2 }
+    }
     let mut tag = bytes_new(1)
     bytes_set(tag, 0, 1)
     let pat = bytes_concat(tag, prefix)
@@ -145,6 +173,18 @@ fn lsm_scan_prefix_kb(db: LsmDB, cursor: i64, count: i64, prefix: bytes) -> LsmS
 // Full sorted prefix snapshot (one live fold; cache kept). boilaDB K3h.
 
 fn lsm_scan_prefix_all_kb(db: LsmDB, prefix: bytes) -> LsmScanB !IO !Time {
+    if db.scan_cache_off == 1 {
+        let fr = lsm_live_map_prefix_kb(db, prefix)?
+        let all = fr.keys
+        sort_bytes(all)
+        let out2: Vec<bytes> = vec_new()
+        let mut j2: i64 = 0
+        while j2 < vec_len(all) {
+            vec_push(out2, vec_get(all, j2))
+            j2 = j2 + 1
+        }
+        return LsmScanB { db: fr.db, next: 0, keys: out2 }
+    }
     let mut tag = bytes_new(1)
     bytes_set(tag, 0, 1)
     let pat = bytes_concat(tag, prefix)
@@ -167,6 +207,41 @@ fn lsm_scan_prefix_all_kb(db: LsmDB, prefix: bytes) -> LsmScanB !IO !Time {
 // O(count) slices of the cached snapshot (no per-page full re-fold).
 
 fn lsm_scan_kb(db: LsmDB, cursor: i64, count: i64, match_pat: bytes) -> LsmScanB !IO !Time {
+    if db.scan_cache_off == 1 {
+        // MT/serve: fresh snapshot в local, glob филтър, без писане в db.
+        let fr = lsm_live_map_kb(db)?
+        let mut db2 = fr.db
+        let all = fr.keys
+        let filtered2: Vec<bytes> = vec_new()
+        let mut i2: i64 = 0
+        while i2 < vec_len(all) {
+            let k2 = vec_get(all, i2)
+            if lsm_match_glob_b(match_pat, k2) == 1 {
+                vec_push(filtered2, k2)
+            }
+            i2 = i2 + 1
+        }
+        let n2 = vec_len(filtered2)
+        let mut cur2 = cursor
+        if cur2 < 0 { cur2 = 0 }
+        if cur2 > n2 { cur2 = n2 }
+        let mut cnt2 = count
+        if cnt2 < 1 { cnt2 = 10 }
+        if cnt2 > 1000 { cnt2 = 1000 }
+        let out2: Vec<bytes> = vec_new()
+        let mut j2 = cur2
+        let mut taken2: i64 = 0
+        while j2 < n2 && taken2 < cnt2 {
+            vec_push(out2, vec_get(filtered2, j2))
+            j2 = j2 + 1
+            taken2 = taken2 + 1
+        }
+        let mut next2: i64 = j2
+        if next2 >= n2 {
+            next2 = 0
+        }
+        return LsmScanB { db: db2, next: next2, keys: out2 }
+    }
     // Rebuild when: no cache, write since last build, or MATCH changed.
     // Cursor 0 always accepts a rebuild if cache is stale; mid-cursor with
     // a stale cache also rebuilds (caller may see duplicates / skips —
