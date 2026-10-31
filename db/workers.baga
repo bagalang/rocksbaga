@@ -141,6 +141,28 @@ fn lsm_mb_job(rc: i64, id: i64, op: i64, key: str, val: str, extra: str) -> i64 
     return lsm_mb_job_b(rc, id, op, key, bytes_of_str(val), extra)
 }
 
+// P57: nested job/reply cell2 free. Key/value/extra са zero-copy handles —
+// не се пипат; free-ваме само структурните двойки.
+fn lsm_job_free(job: i64) {
+    if job == 0 { return }
+    let p1 = cell2_1(job)
+    let p2 = cell2_1(p1)
+    let p3 = cell2_1(p2)
+    let p4 = cell2_1(p3)
+    cell2_free(p4)
+    cell2_free(p3)
+    cell2_free(p2)
+    cell2_free(p1)
+    cell2_free(job)
+}
+
+fn lsm_rep_free(rep: i64) {
+    if rep == 0 { return }
+    let rp = cell2_1(rep)
+    cell2_free(rp)
+    cell2_free(rep)
+}
+
 fn lsm_mb_done(id: i64, kind: i64, payload_h: i64) -> i64 {
     return cell2(id, cell2(kind, payload_h))
 }

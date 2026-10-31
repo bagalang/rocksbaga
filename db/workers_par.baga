@@ -148,6 +148,7 @@ fn lsm_worker_one(db: LsmDB, msg: i64) -> LsmDB !IO !Par !Time {
         }
     }
     chan_send(rc, lsm_mb_done(id, kind, ph))
+    lsm_job_free(msg)
     return db
 }
 
@@ -373,10 +374,12 @@ fn lsm_mt_wait(done: i64, id: i64, stash: Map<i64, i64>) -> str !Par {
 }
 
 // Stash done: msg = cell2(id, cell2(kind, payload_h))
-fn lsm_parallel_stash_done(p: LsmParallel, msg: i64) {
+fn lsm_parallel_stash_done(p: LsmParallel, msg: i64) -> i64 {
     let id = cell2_0(msg)
     let rp = cell2_1(msg)
     map_set(p.reps, id, rp)
+    cell2_free(msg)
+    return id
 }
 
 // Expand typed reply for completed job → RESP bytes.
@@ -386,7 +389,9 @@ fn lsm_parallel_take_rep_b(p: LsmParallel, id: i64) -> bytes {
     if rp == 0 {
         return bytes_of_str("-ERR missing reply\r\n")
     }
-    return lsm_mb_rep_to_bytes(cell2_0(rp), cell2_1(rp))
+    let out = lsm_mb_rep_to_bytes(cell2_0(rp), cell2_1(rp))
+    cell2_free(rp)
+    return out
 }
 
 // Block until `id` completes; binary-safe RESP bytes.
@@ -403,8 +408,8 @@ fn lsm_parallel_wait_b(p: LsmParallel, id: i64) -> bytes !Par {
         if ok == 0 {
             return bytes_of_str("-ERR worker closed\r\n")
         }
-        lsm_parallel_stash_done(p, msg)
-        if cell2_0(msg) == id {
+        let mid = lsm_parallel_stash_done(p, msg)
+        if mid == id {
             return lsm_parallel_take_rep_b(p, id)
         }
         guard = guard + 1

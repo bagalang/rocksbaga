@@ -51,8 +51,7 @@ fn lsm_parallel_try_done(p: LsmParallel) -> i64 !Par {
     let msg = cell2_1(pr)
     cell2_free(pr)
     if st == 1 {
-        lsm_parallel_stash_done(p, msg)
-        return cell2_0(msg)
+        return lsm_parallel_stash_done(p, msg)
     }
     if st == 2 {
         return 0 - 1
