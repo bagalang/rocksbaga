@@ -50,10 +50,12 @@ fn lsm_shard_worker(ctx: i64) -> i64 !IO !Par !Time {
     let mut run: i64 = 1
     while run == 1 {
         let p = chan_recv2(work)
-        if cell2_0(p) == 0 {
+        let ok = cell2_0(p)
+        let msg = cell2_1(p)
+        cell2_free(p)
+        if ok == 0 {
             run = 0
         } else {
-            let msg = cell2_1(p)
             if msg < 0 {
                 run = 0
             } else {
@@ -65,8 +67,9 @@ fn lsm_shard_worker(ctx: i64) -> i64 !IO !Par !Time {
                 while more == 1 && drained < 64 && run == 1 {
                     let t = chan_try_recv(work)
                     let st = cell2_0(t)
+                    let m2 = cell2_1(t)
+                    cell2_free(t)
                     if st == 1 {
-                        let m2 = cell2_1(t)
                         if m2 < 0 {
                             run = 0
                         } else {
@@ -348,10 +351,12 @@ fn lsm_mt_wait_b(done: i64, id: i64, stash: Map<i64, i64>) -> bytes !Par {
     let mut guard: i64 = 0
     while guard < 100000 {
         let pr = chan_recv2(done)
-        if cell2_0(pr) == 0 {
+        let ok = cell2_0(pr)
+        let msg = cell2_1(pr)
+        cell2_free(pr)
+        if ok == 0 {
             return bytes_of_str("-ERR worker closed\r\n")
         }
-        let msg = cell2_1(pr)
         let got = cell2_0(msg)
         let body = cell2_1(msg)
         if got == id {
@@ -392,10 +397,12 @@ fn lsm_parallel_wait_b(p: LsmParallel, id: i64) -> bytes !Par {
     let mut guard: i64 = 0
     while guard < 100000 {
         let pr = chan_recv2(p.done)
-        if cell2_0(pr) == 0 {
+        let ok = cell2_0(pr)
+        let msg = cell2_1(pr)
+        cell2_free(pr)
+        if ok == 0 {
             return bytes_of_str("-ERR worker closed\r\n")
         }
-        let msg = cell2_1(pr)
         lsm_parallel_stash_done(p, msg)
         if cell2_0(msg) == id {
             return lsm_parallel_take_rep_b(p, id)

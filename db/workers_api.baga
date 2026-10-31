@@ -48,8 +48,9 @@ fn lsm_parallel_stop(p: LsmParallel) -> i64 !Par {
 fn lsm_parallel_try_done(p: LsmParallel) -> i64 !Par {
     let pr = chan_try_recv(p.done)
     let st = cell2_0(pr)
+    let msg = cell2_1(pr)
+    cell2_free(pr)
     if st == 1 {
-        let msg = cell2_1(pr)
         lsm_parallel_stash_done(p, msg)
         return cell2_0(msg)
     }
