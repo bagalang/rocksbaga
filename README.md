@@ -10,6 +10,35 @@ This repository is the engine. The compiler, `std`, and `kvbaga` stay in
 the baga language monorepo. Check this tree out as `app-product/rocksbaga`
 there (git submodule) so path deps and `-I app-product` keep working.
 
+## Benchmark vs RocksDB
+
+Head-to-head **pure engine** microbench against official RocksDB
+(Python `rocksdict`), same keys / values / op counts / single writer —
+no RESP/TCP on either side. Harness lives in the monorepo at
+[`bench/rocks/`](../../bench/rocks/README.md).
+
+```bash
+# from the baga monorepo root; first run installs rocksdict into a venv
+BENCH_DIR=/var/tmp/rocksbench BENCH_N=5000 ./bench/rocks/run_vs_rocksdb.sh           # durable (fsync each put)
+BENCH_DIR=/var/tmp/rocksbench BENCH_N=5000 BENCH_MODE=batch ./bench/rocks/run_vs_rocksdb.sh  # bulk load
+```
+
+> Use a **real-disk** `BENCH_DIR`. The default `/tmp` is tmpfs on many
+> hosts, where fsync is a no-op and durable PUT is not comparable.
+
+**Latest scorecard (2026-11-01, deb1, btrfs on NVMe, n=5000, vlen=100 —
+rocksbaga as % of RocksDB ops/s, higher is better):**
+
+| mode | PUT | GET_SEQ | GET_RND |
+|------|----:|--------:|--------:|
+| durable (fsync/put) | **124%** | **127%** | **114%** |
+| batch (bulk load) | **82%** | **142%** | **148%** |
+
+Full history, artifacts and how to read ratios:
+[`bench/rocks/results/vs-rocksdb-scorecard.md`](../../bench/rocks/results/vs-rocksdb-scorecard.md).
+This is a throughput bar under this harness, **not** a RocksDB feature-parity
+claim — see [docs/gaps.md](docs/gaps.md).
+
 ## Checkout
 
 Inside a baga language clone:
@@ -54,9 +83,8 @@ docs/           PLAN, gaps
 | SSTable | `table/` | BAGASST5 + `.bloom.<gen>` sidecar; R20 block scan compact |
 | RESP | `net/` | redis-cli subset; **poll multi-conn** (R15) |
 
-**Bench:** `./bench/rocks/run_vs_rocksdb.sh` — pure engine vs RocksDB.  
-Scorecard (n=5000): durable PUT **92%** / GET ~parity; batch PUT **137%** —
-see [`bench/rocks/results/vs-rocksdb-scorecard.md`](../../bench/rocks/results/vs-rocksdb-scorecard.md).
+**Bench:** pure engine vs RocksDB — see [Benchmark vs RocksDB](#benchmark-vs-rocksdb)
+above and [`bench/rocks/results/vs-rocksdb-scorecard.md`](../../bench/rocks/results/vs-rocksdb-scorecard.md).
 
 **Dump:**  
 `LSMPATH=/tmp/baga_lsm ./baga -I . -I app-product app-product/rocksbaga/tools/sst_dump.baga`  
